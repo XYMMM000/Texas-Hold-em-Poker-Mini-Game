@@ -1,4 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { onAuthStateChanged, User } from 'firebase/auth';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { auth, db } from './lib/firebase';
+
 import {
   Achievement,
   Card,
@@ -29,6 +33,8 @@ import { HandHistoryModal } from './components/HandHistoryModal';
 import { ContinueGameModal } from './components/ContinueGameModal';
 import { AchievementToast } from './components/AchievementToast';
 import { AchievementsModal } from './components/AchievementsModal';
+import { AuthModal } from './components/AuthModal';
+import { UserProfileModal } from './components/UserProfileModal';
 
 const SAVE_STORAGE_KEY = 'poker_saved_game_v1';
 
@@ -70,6 +76,11 @@ export default function App() {
   const [isRulesOpen, setIsRulesOpen] = useState(false);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [isAchievementsOpen, setIsAchievementsOpen] = useState(false);
+
+  // User Auth & Firebase State
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [isAuthOpen, setIsAuthOpen] = useState(false);
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
 
   // Achievements & Toasts State
   const [unlockedAchievements, setUnlockedAchievements] = useState<
@@ -387,7 +398,57 @@ export default function App() {
     startNewHand(resetPlayers);
   }, [settings.startingChips, players, startNewHand]);
 
-  // Auto-save game state to localStorage
+  // Auth observer & Cloud Data Sync
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      setCurrentUser(user);
+      if (user) {
+        try {
+          const userDocRef = doc(db, 'users', user.uid);
+          const snap = await getDoc(userDocRef);
+          if (snap.exists()) {
+            const data = snap.data();
+            if (typeof data.userChips === 'number') {
+              setPlayers((prev) =>
+                prev.map((p) =>
+                  p.isUser
+                    ? {
+                        ...p,
+                        chips: data.userChips,
+                        name: user.displayName || p.name,
+                      }
+                    : p
+                )
+              );
+            }
+            if (data.stats) setStats(data.stats);
+            if (data.unlockedAchievements) setUnlockedAchievements(data.unlockedAchievements);
+            if (data.settings) setSettings(data.settings);
+            if (data.handHistory) setHandHistory(data.handHistory);
+            if (data.handNumber) setHandNumber(data.handNumber);
+          } else {
+            // First time login - set up document
+            const uPlayer = players.find((p) => p.isUser);
+            await setDoc(userDocRef, {
+              uid: user.uid,
+              email: user.email,
+              displayName: user.displayName || 'Poker Player',
+              userChips: uPlayer ? uPlayer.chips : 1000,
+              stats,
+              settings,
+              unlockedAchievements,
+              updatedAt: new Date().toISOString(),
+            });
+          }
+        } catch (e) {
+          console.error('Error fetching Firestore user data:', e);
+        }
+      }
+    });
+    return () => unsubscribe();
+  }, []);
+
+  // Auto-save game state to localStorage & Firestore
   useEffect(() => {
     if (!isGameInitialized) return;
 
@@ -417,7 +478,31 @@ export default function App() {
     } catch (err) {
       console.error('Error auto-saving game:', err);
     }
-  }, [players, stats, settings, handNumber, handHistory, isGameInitialized, unlockedAchievements]);
+
+    // Sync to Firestore if logged in
+    if (currentUser) {
+      try {
+        const userDocRef = doc(db, 'users', currentUser.uid);
+        setDoc(
+          userDocRef,
+          {
+            uid: currentUser.uid,
+            email: currentUser.email,
+            displayName: currentUser.displayName || 'Poker Player',
+            userChips,
+            stats,
+            settings,
+            unlockedAchievements,
+            handNumber,
+            updatedAt: new Date().toISOString(),
+          },
+          { merge: true }
+        );
+      } catch (err) {
+        console.error('Error syncing to Firestore:', err);
+      }
+    }
+  }, [players, stats, settings, handNumber, handHistory, isGameInitialized, unlockedAchievements, currentUser]);
 
   // ADVANCE TO NEXT STAGE OR SHOWDOWN
   const advanceStage = useCallback(() => {
@@ -885,6 +970,9 @@ export default function App() {
         onRebuyChips={handleRebuy}
         onNewGame={handleStartNewGame}
         isSaved={isGameInitialized}
+        currentUser={currentUser}
+        onOpenAuth={() => setIsAuthOpen(true)}
+        onOpenProfile={() => setIsProfileOpen(true)}
       />
 
       {/* Main Felt Poker Table Area */}
@@ -983,6 +1071,29 @@ export default function App() {
           savedState={savedGameState}
           onContinue={handleContinueGame}
           onStartNewGame={handleStartNewGame}
+        />
+      )}
+
+      {/* User Login Auth Modal */}
+      {isAuthOpen && (
+        <AuthModal
+          onClose={() => setIsAuthOpen(false)}
+        />
+      )}
+
+      {/* User Profile & Account Modal */}
+      {isProfileOpen && currentUser && (
+        <UserProfileModal
+          user={currentUser}
+          userChips={userPlayer.chips}
+          stats={stats}
+          unlockedCount={unlockedCount}
+          onClose={() => setIsProfileOpen(false)}
+          onProfileUpdated={(newName) => {
+            setPlayers((prev) =>
+              prev.map((p) => (p.isUser ? { ...p, name: newName } : p))
+            );
+          }}
         />
       )}
 

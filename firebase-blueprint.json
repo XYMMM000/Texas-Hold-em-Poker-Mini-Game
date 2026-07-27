@@ -1,0 +1,20 @@
+{
+  "entities": {
+    "users": {
+      "title": "User Profile & Game Save",
+      "description": "Stores user profile and poker game save data",
+      "properties": {
+        "uid": { "type": "string", "description": "User ID" },
+        "email": { "type": "string", "description": "User Email" },
+        "displayName": { "type": "string", "description": "Display Name" },
+        "photoURL": { "type": "string", "description": "User avatar photo URL" },
+        "userChips": { "type": "number", "description": "Current chip balance" },
+        "stats": { "type": "object", "description": "Poker stats" },
+        "unlockedAchievements": { "type": "object", "description": "Achievements data" },
+        "settings": { "type": "object", "description": "Game settings" },
+        "updatedAt": { "type": "string", "description": "Last updated timestamp" }
+      },
+      "required": ["uid"]
+    }
+  }
+}

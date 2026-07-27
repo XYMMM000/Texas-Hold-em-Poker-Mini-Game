@@ -1,5 +1,6 @@
 import React from 'react';
-import { Volume2, VolumeX, Settings, History, HelpCircle, BarChart3, Coins, RotateCcw, CheckCircle2, Trophy } from 'lucide-react';
+import { Volume2, VolumeX, Settings, History, HelpCircle, BarChart3, Coins, RotateCcw, CheckCircle2, Trophy, User as UserIcon, Cloud } from 'lucide-react';
+import { User } from 'firebase/auth';
 import { formatChips } from '../utils/cardUtils';
 
 interface HeaderNavProps {
@@ -18,6 +19,9 @@ interface HeaderNavProps {
   onRebuyChips: () => void;
   onNewGame?: () => void;
   isSaved?: boolean;
+  currentUser?: User | null;
+  onOpenAuth?: () => void;
+  onOpenProfile?: () => void;
 }
 
 export const HeaderNav: React.FC<HeaderNavProps> = ({
@@ -36,6 +40,9 @@ export const HeaderNav: React.FC<HeaderNavProps> = ({
   onRebuyChips,
   onNewGame,
   isSaved = true,
+  currentUser,
+  onOpenAuth,
+  onOpenProfile,
 }) => {
   return (
     <header className="w-full bg-slate-950/90 border-b border-slate-800 backdrop-blur-xl px-4 py-2.5 flex items-center justify-between gap-3 text-slate-100 z-30 select-none">
@@ -85,6 +92,32 @@ export const HeaderNav: React.FC<HeaderNavProps> = ({
 
       {/* Quick Action Icons */}
       <div className="flex items-center gap-1 sm:gap-2">
+        {/* User Account Button */}
+        {currentUser ? (
+          <button
+            onClick={onOpenProfile}
+            title="User Profile & Cloud Sync"
+            className="p-1.5 px-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-emerald-500/50 text-slate-200 transition flex items-center gap-2 text-xs relative group"
+          >
+            <div className="w-5 h-5 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold text-xs border border-emerald-500/40">
+              {currentUser.displayName ? currentUser.displayName[0].toUpperCase() : 'U'}
+            </div>
+            <span className="hidden lg:inline font-bold text-slate-200 max-w-[100px] truncate">
+              {currentUser.displayName || 'Player'}
+            </span>
+            <Cloud className="w-3.5 h-3.5 text-emerald-400 animate-pulse" />
+          </button>
+        ) : (
+          <button
+            onClick={onOpenAuth}
+            title="Sign In / Register"
+            className="px-2.5 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-black transition flex items-center gap-1.5 text-xs shadow-md shadow-amber-500/20"
+          >
+            <UserIcon className="w-3.5 h-3.5" />
+            <span>Sign In</span>
+          </button>
+        )}
+
         {onNewGame && (
           <button
             onClick={onNewGame}
@@ -154,5 +187,6 @@ export const HeaderNav: React.FC<HeaderNavProps> = ({
     </header>
   );
 };
+
 
 

@@ -5,7 +5,6 @@ import {defineConfig} from 'vite';
 
 export default defineConfig(() => {
   return {
-    base: '/Texas-Hold-em-Poker-Mini-Game/',
     plugins: [react(), tailwindcss()],
     resolve: {
       alias: {
