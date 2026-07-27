@@ -1,0 +1,6 @@
+{
+  "name": "Texas Hold'em Poker",
+  "description": "Interactive Texas Hold'em poker game with authentic felt table, smart AI opponents, hand solver with side pots, odds calculator, chip management, and audio effects.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
